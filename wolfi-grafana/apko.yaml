@@ -1,0 +1,50 @@
+contents:
+  repositories:
+    - https://packages.wolfi.dev/os
+    # Wskazujemy Twój lokalny folder z paczkami
+    - ./packages
+  keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    # Twój klucz publiczny
+    - ./local-melange.rsa.pub
+  packages:
+    - wolfi-base
+    - ca-certificates-bundle
+    - grafana-custom
+    - tzdata
+
+accounts:
+  groups:
+    - groupname: grafana
+      gid: 472
+  users:
+    - username: grafana
+      uid: 472
+      gid: 472
+  run-as: 472
+
+paths:
+  - path: /var/lib/grafana
+    type: directory
+    permissions: 0775
+    uid: 472
+    gid: 472
+    recursive: true
+  - path: /var/log/grafana
+    type: directory
+    permissions: 0775
+    uid: 472
+    gid: 472
+    recursive: true
+  - path: /usr/share/grafana
+    type: directory
+    permissions: 0755
+    uid: 472
+    gid: 472
+    recursive: true
+
+entrypoint:
+  command: /usr/bin/grafana-server --homepath=/usr/share/grafana --config=/usr/share/grafana/conf/defaults.ini --packaging=docker cfg:default.paths.logs=/var/log/grafana cfg:default.paths.data=/var/lib/grafana cfg:default.paths.plugins=/var/lib/grafana/plugins
+
+archs:
+  - amd64
