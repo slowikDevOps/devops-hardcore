@@ -22,12 +22,15 @@ accounts:
   run-as: 9090
 
 paths:
+  # Katalog dla Vaulta (tu wyląduje Twój sekret)
   - path: /prometheus
     type: directory
     permissions: 0755
     uid: 9090
     gid: 9090
     recursive: true
+  
+  # Katalog dla bibliotek konsoli (zgodnie z deploymentem OKD)
   - path: /etc/prometheus
     type: directory
     permissions: 0755
@@ -36,7 +39,8 @@ paths:
     recursive: true
 
 entrypoint:
-  command: /usr/bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --web.console.libraries=/usr/share/prometheus/console_libraries --web.console.templates=/usr/share/prometheus/consoles
+  # TYLKO BINARKA. Flagi przyjdą z OKD (args).
+  command: /usr/bin/prometheus
 
 archs:
   - amd64

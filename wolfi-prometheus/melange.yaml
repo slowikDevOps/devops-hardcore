@@ -1,8 +1,8 @@
 package:
   name: prometheus-custom
   version: 3.9.1
-  epoch: 0 # Resetujemy licznik
-  description: "Prometheus Hardcore Build - Zero CVE (Official Binary Repack)"
+  epoch: 5 # Podbijam, żebyś miał pewność, że to nowa wersja
+  description: "Prometheus 3.9.1 (Compatible with existing OKD Deployment)"
   target-architecture:
     - all
   copyright:
@@ -21,45 +21,53 @@ environment:
       - git
 
 pipeline:
+  # KROK 1: Pobieramy kod źródłowy (tylko dla struktury katalogów i zapasowego configu)
   - uses: git-checkout
     with:
       repository: https://github.com/prometheus/prometheus
       tag: v3.9.1
       depth: 1
 
+  # KROK 2: Pobieramy binarkę (bo kompilacja leży i kwiczy)
   - name: Fetch Official Binary
     runs: |
       echo "🔥 Pobieranie silnika Prometheus v3.9.1..."
       mkdir -p /tmp/official
-      
       curl -L -o /tmp/prom.tar.gz \
         https://github.com/prometheus/prometheus/releases/download/v3.9.1/prometheus-3.9.1.linux-amd64.tar.gz
-      
       tar -xzf /tmp/prom.tar.gz -C /tmp/official
       
+      # Wyciągamy samą binarkę (nadpiszemy to, co ściągnął git, ale to bez znaczenia)
       BIN_DIR=$(find /tmp/official -maxdepth 1 -type d -name "prometheus-*" | head -n 1)
-      
       mv "$BIN_DIR/prometheus" .
       mv "$BIN_DIR/promtool" .
 
+  # KROK 3: Instalacja (Kluczowy moment - ścieżki pod OKD)
   - name: Install
     runs: |
       mkdir -p ${{targets.destdir}}/usr/bin
-      mkdir -p ${{targets.destdir}}/etc/prometheus
-      mkdir -p ${{targets.destdir}}/usr/share/prometheus/consoles
-      mkdir -p ${{targets.destdir}}/usr/share/prometheus/console_libraries
+      
+      # Tworzymy katalogi tam, gdzie Twój Deployment w OKD ich oczekuje
+      # Argument w OKD: --web.console.libraries=/etc/prometheus/console_libraries
+      mkdir -p ${{targets.destdir}}/etc/prometheus/consoles
+      mkdir -p ${{targets.destdir}}/etc/prometheus/console_libraries
 
+      # Instalujemy binarki
       cp prometheus ${{targets.destdir}}/usr/bin/
       cp promtool ${{targets.destdir}}/usr/bin/
 
+      # Instalujemy biblioteki konsoli (z repozytorium git, bo tam są)
+      # Kopiujemy je do /etc/prometheus, żeby pasowały do flag w OKD
       CONFIG_SRC="documentation/examples"
       
-      cp $CONFIG_SRC/prometheus.yml ${{targets.destdir}}/etc/prometheus/prometheus.yml
-      
       if [ -d "$CONFIG_SRC/consoles" ]; then
-          cp -r $CONFIG_SRC/consoles/* ${{targets.destdir}}/usr/share/prometheus/consoles/
+          cp -r $CONFIG_SRC/consoles/* ${{targets.destdir}}/etc/prometheus/consoles/
       fi
       
       if [ -d "$CONFIG_SRC/console_libraries" ]; then
-          cp -r $CONFIG_SRC/console_libraries/* ${{targets.destdir}}/usr/share/prometheus/console_libraries/
+          cp -r $CONFIG_SRC/console_libraries/* ${{targets.destdir}}/etc/prometheus/console_libraries/
       fi
+      
+      # Kopiujemy domyślny config do /etc/prometheus jako fallback
+      # (Twój Vault i tak nadpisze config w /prometheus/prometheus.yml, ale obraz musi być poprawny)
+      cp $CONFIG_SRC/prometheus.yml ${{targets.destdir}}/etc/prometheus/prometheus.yml
