@@ -1,0 +1,65 @@
+package:
+  name: prometheus-custom
+  version: 3.9.1
+  epoch: 0 # Resetujemy licznik
+  description: "Prometheus Hardcore Build - Zero CVE (Official Binary Repack)"
+  target-architecture:
+    - all
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - ca-certificates-bundle
+      - busybox
+      - curl
+      - git
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/prometheus/prometheus
+      tag: v3.9.1
+      depth: 1
+
+  - name: Fetch Official Binary
+    runs: |
+      echo "🔥 Pobieranie silnika Prometheus v3.9.1..."
+      mkdir -p /tmp/official
+      
+      curl -L -o /tmp/prom.tar.gz \
+        https://github.com/prometheus/prometheus/releases/download/v3.9.1/prometheus-3.9.1.linux-amd64.tar.gz
+      
+      tar -xzf /tmp/prom.tar.gz -C /tmp/official
+      
+      BIN_DIR=$(find /tmp/official -maxdepth 1 -type d -name "prometheus-*" | head -n 1)
+      
+      mv "$BIN_DIR/prometheus" .
+      mv "$BIN_DIR/promtool" .
+
+  - name: Install
+    runs: |
+      mkdir -p ${{targets.destdir}}/usr/bin
+      mkdir -p ${{targets.destdir}}/etc/prometheus
+      mkdir -p ${{targets.destdir}}/usr/share/prometheus/consoles
+      mkdir -p ${{targets.destdir}}/usr/share/prometheus/console_libraries
+
+      cp prometheus ${{targets.destdir}}/usr/bin/
+      cp promtool ${{targets.destdir}}/usr/bin/
+
+      CONFIG_SRC="documentation/examples"
+      
+      cp $CONFIG_SRC/prometheus.yml ${{targets.destdir}}/etc/prometheus/prometheus.yml
+      
+      if [ -d "$CONFIG_SRC/consoles" ]; then
+          cp -r $CONFIG_SRC/consoles/* ${{targets.destdir}}/usr/share/prometheus/consoles/
+      fi
+      
+      if [ -d "$CONFIG_SRC/console_libraries" ]; then
+          cp -r $CONFIG_SRC/console_libraries/* ${{targets.destdir}}/usr/share/prometheus/console_libraries/
+      fi

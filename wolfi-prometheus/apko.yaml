@@ -1,0 +1,42 @@
+contents:
+  repositories:
+    - https://packages.wolfi.dev/os
+    - ./packages
+  keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    - ./local-melange.rsa.pub
+  packages:
+    - wolfi-base
+    - ca-certificates-bundle
+    - prometheus-custom
+    - tzdata
+
+accounts:
+  groups:
+    - groupname: prometheus
+      gid: 9090
+  users:
+    - username: prometheus
+      uid: 9090
+      gid: 9090
+  run-as: 9090
+
+paths:
+  - path: /prometheus
+    type: directory
+    permissions: 0755
+    uid: 9090
+    gid: 9090
+    recursive: true
+  - path: /etc/prometheus
+    type: directory
+    permissions: 0755
+    uid: 9090
+    gid: 9090
+    recursive: true
+
+entrypoint:
+  command: /usr/bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --web.console.libraries=/usr/share/prometheus/console_libraries --web.console.templates=/usr/share/prometheus/consoles
+
+archs:
+  - amd64
