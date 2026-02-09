@@ -1,0 +1,57 @@
+package:
+  name: postgres-exporter-custom
+  version: 0.19.0
+  epoch: 0
+  description: "Postgres Exporter - 0 CVE Hardcore Build"
+  target-architecture:
+    - all
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - wolfi-base
+      - go
+      - make
+      - git
+      - build-base
+
+pipeline:
+  # Krok 1: Pobieramy kod źródłowy
+  - uses: git-checkout
+    with:
+      repository: https://github.com/prometheus-community/postgres_exporter
+      tag: v0.19.0
+      depth: 1
+
+  # Krok 2: Budowanie (Go Build)
+  - name: Build Binary
+    runs: |
+      export CGO_ENABLED=0 # Budujemy statycznie, zero bibliotek C, zero problemów
+      
+      # Pobieramy hash commita i datę dla metadanych
+      COMMIT_SHA=$(git rev-parse --short HEAD)
+      BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+      
+      echo "Building Postgres Exporter v0.19.0..."
+      
+      # Magia Ldflags - wstrzykujemy wersję w zmienne Prometheusa
+      go build -ldflags \
+        "-s -w \
+         -X github.com/prometheus/common/version.Version=0.19.0 \
+         -X github.com/prometheus/common/version.Revision=${COMMIT_SHA} \
+         -X github.com/prometheus/common/version.Branch=HEAD \
+         -X github.com/prometheus/common/version.BuildDate=${BUILD_DATE}" \
+        -o postgres_exporter ./cmd/postgres_exporter
+
+  # Krok 3: Instalacja do struktury paczki
+  - name: Install
+    runs: |
+      mkdir -p ${{targets.destdir}}/usr/bin
+      mv postgres_exporter ${{targets.destdir}}/usr/bin/
+      chmod 755 ${{targets.destdir}}/usr/bin/postgres_exporter
