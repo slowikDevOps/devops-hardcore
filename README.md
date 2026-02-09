@@ -381,6 +381,23 @@ docker run -d \
   mojagrafana:12.3.2-amd64-wolfi-clean
 ```
 
+7. Zróbmy to razem na podstawie przygotowanych plików yaml - prometheus:
+
+```
+docker run --rm --privileged -v "$(pwd):/work" \
+  cgr.dev/chainguard/melange build melange.yaml \
+  --arch amd64 --signing-key local-melange.rsa
+```
+
+```
+docker run --rm -v "$(pwd):/work" \
+  cgr.dev/chainguard/apko build apko.yaml \
+  mojprometheus:okd-ready \
+  prometheus-okd.tar \
+  --arch amd64
+```
+
+
 ---
 ### ✍️ Autor
 **[mgr inż. Szymon Słowicki](https://www.linkedin.com/in/szymonslowicki/)** – DevOps Engineer @ Pentacomp Systemy Informatyczne

@@ -1,7 +1,7 @@
 package:
   name: prometheus-custom
   version: 3.9.1
-  epoch: 5 # Podbijam, żebyś miał pewność, że to nowa wersja
+  epoch: 1
   description: "Prometheus 3.9.1 (Compatible with existing OKD Deployment)"
   target-architecture:
     - all

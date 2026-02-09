@@ -39,7 +39,6 @@ paths:
     recursive: true
 
 entrypoint:
-  # TYLKO BINARKA. Flagi przyjdą z OKD (args).
   command: /usr/bin/prometheus
 
 archs:
