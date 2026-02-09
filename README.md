@@ -381,6 +381,23 @@ docker run -d \
   mojagrafana:12.3.2-amd64-wolfi-clean
 ```
 
+### 🥷🏻 7. Zróbmy to razem na podstawie przygotowanych plików yaml - blackbox:
+```
+docker run --rm --privileged \
+  -v "$(pwd):/work" \
+  cgr.dev/chainguard/melange build melange.yaml \
+  --arch x86_64 \
+  --signing-key local-melange.rsa
+```
+
+```
+docker run --rm -v "$(pwd):/work" \
+  cgr.dev/chainguard/apko build apko.yaml \
+  blackbox-exporter:0.28.0-wolfi-clean-amd64 \
+  blackbox-exporter.tar \
+  --arch amd64
+```
+
 ---
 ### ✍️ Autor
 **[mgr inż. Szymon Słowicki](https://www.linkedin.com/in/szymonslowicki/)** – DevOps Engineer @ Pentacomp Systemy Informatyczne
