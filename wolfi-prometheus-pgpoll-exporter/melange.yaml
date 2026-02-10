@@ -1,0 +1,82 @@
+package:
+  name: pgpool2-exporter-custom
+  version: 1.2.2
+  epoch: 1 # Podbijamy epoch, bo zmieniamy sposób budowania
+  description: "Pgpool2 Exporter custom build without CVEs"
+  target-architecture:
+    - all
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - wolfi-base
+      - ca-certificates-bundle
+      - go
+      - make
+      - git
+      - build-base
+      - file  # <--- DODANE: Naprawia błąd "file: not found"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/pgpool/pgpool2_exporter
+      tag: v1.2.2
+      depth: 1
+
+  - name: Build Pgpool2 Exporter
+    runs: |
+      # 1. Setup Go
+      export CGO_ENABLED=0
+      export GOOS=linux
+      export GOARCH=amd64
+      go mod download
+      
+      mkdir -p bin
+
+      # 2. INTELIGENTNE BUDOWANIE
+      # Szukamy, gdzie jest plik main.go, zamiast zgadywać.
+      # Zazwyczaj jest w root (.) albo w cmd/pgpool2_exporter
+      echo "--- LOCATING MAIN PACKAGE ---"
+      MAIN_FILE=$(find . -name "main.go" | head -n 1)
+      
+      if [ -z "$MAIN_FILE" ]; then
+         # Fallback: Jeśli nie ma main.go, może plik nazywa się tak jak repo?
+         echo "main.go not found, searching for pgpool2_exporter.go with package main..."
+         MAIN_FILE=$(grep -l "package main" *.go | head -n 1)
+      fi
+
+      if [ -z "$MAIN_FILE" ]; then
+         echo "CRITICAL ERROR: Could not find entry point (package main)!"
+         exit 1
+      fi
+
+      echo "Found entry point at: $MAIN_FILE"
+      
+      echo "--- BUILDING BINARY ---"
+      # Budujemy konkretny plik/folder, który znaleźliśmy
+      go build -v -ldflags="-s -w" -o bin/pgpool2_exporter $MAIN_FILE
+
+      # 3. Weryfikacja
+      echo "--- VERIFICATION ---"
+      ls -lh bin/pgpool2_exporter
+      file bin/pgpool2_exporter
+      
+      # Sprawdzamy czy to ELF (binarka) czy AR archive (biblioteka)
+      if file bin/pgpool2_exporter | grep -q "ELF"; then
+         echo "SUCCESS: Built valid ELF binary."
+      else
+         echo "FAILURE: Built file is NOT an ELF binary."
+         exit 1
+      fi
+
+  - name: Install
+    runs: |
+      mkdir -p ${{targets.destdir}}/usr/bin
+      install -m 0755 bin/pgpool2_exporter ${{targets.destdir}}/usr/bin/pgpool2_exporter
