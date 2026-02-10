@@ -1,8 +1,8 @@
 package:
   name: pgpool2-exporter-custom
   version: 1.2.2
-  epoch: 1 # Podbijamy epoch, bo zmieniamy sposób budowania
-  description: "Pgpool2 Exporter custom build without CVEs"
+  epoch: 2
+  description: "Pgpool2 Exporter custom build without CVEs (Patched Protobuf)"
   target-architecture:
     - all
   copyright:
@@ -21,7 +21,7 @@ environment:
       - make
       - git
       - build-base
-      - file  # <--- DODANE: Naprawia błąd "file: not found"
+      - file
 
 pipeline:
   - uses: git-checkout
@@ -32,23 +32,30 @@ pipeline:
 
   - name: Build Pgpool2 Exporter
     runs: |
-      # 1. Setup Go
+      # 1. Setup AMD64
       export CGO_ENABLED=0
       export GOOS=linux
       export GOARCH=amd64
+      
+      # 2. Download dependencies
       go mod download
       
+      # --- FIX CVE-2024-24786 ---
+      echo "--- PATCHING VULNERABLE LIB (Protobuf) ---"
+      go get google.golang.org/protobuf@v1.33.0
+      go mod tidy
+      echo "--- PATCH APPLIED ---"
+      # --------------------------
+
       mkdir -p bin
 
-      # 2. INTELIGENTNE BUDOWANIE
-      # Szukamy, gdzie jest plik main.go, zamiast zgadywać.
-      # Zazwyczaj jest w root (.) albo w cmd/pgpool2_exporter
+      # 3. Locate main.go
       echo "--- LOCATING MAIN PACKAGE ---"
       MAIN_FILE=$(find . -name "main.go" | head -n 1)
       
       if [ -z "$MAIN_FILE" ]; then
-         # Fallback: Jeśli nie ma main.go, może plik nazywa się tak jak repo?
-         echo "main.go not found, searching for pgpool2_exporter.go with package main..."
+         # Fallback
+         echo "main.go not found, searching for pgpool2_exporter.go..."
          MAIN_FILE=$(grep -l "package main" *.go | head -n 1)
       fi
 
@@ -60,19 +67,18 @@ pipeline:
       echo "Found entry point at: $MAIN_FILE"
       
       echo "--- BUILDING BINARY ---"
-      # Budujemy konkretny plik/folder, który znaleźliśmy
+      # Budujemy (flagi -s -w dla odchudzenia)
       go build -v -ldflags="-s -w" -o bin/pgpool2_exporter $MAIN_FILE
 
-      # 3. Weryfikacja
+      # 4. Verify arch
       echo "--- VERIFICATION ---"
       ls -lh bin/pgpool2_exporter
       file bin/pgpool2_exporter
       
-      # Sprawdzamy czy to ELF (binarka) czy AR archive (biblioteka)
-      if file bin/pgpool2_exporter | grep -q "ELF"; then
-         echo "SUCCESS: Built valid ELF binary."
+      if file bin/pgpool2_exporter | grep -q "ELF 64-bit LSB executable, x86-64"; then
+         echo "SUCCESS: Built valid ELF binary for AMD64."
       else
-         echo "FAILURE: Built file is NOT an ELF binary."
+         echo "FAILURE: Output is NOT a valid AMD64 binary."
          exit 1
       fi
 

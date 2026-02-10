@@ -381,19 +381,21 @@ docker run -d \
   mojagrafana:12.3.2-amd64-wolfi-clean
 ```
 
-7. Zróbmy to razem na podstawie przygotowanych plików yaml - prometheus:
+7. Zróbmy to razem na podstawie przygotowanych plików yaml - pgpool exporter:
 
 ```
-docker run --rm --privileged -v "$(pwd):/work" \
+docker run --rm --privileged \                                   
+  -v "$(pwd):/work" \
   cgr.dev/chainguard/melange build melange.yaml \
-  --arch amd64 --signing-key local-melange.rsa
+  --arch amd64 \
+  --signing-key local-melange.rsa
 ```
 
 ```
-docker run --rm -v "$(pwd):/work" \
+docker run --rm -v "$(pwd):/work" \                              
   cgr.dev/chainguard/apko build apko.yaml \
-  mojprometheus:okd-ready \
-  prometheus-okd.tar \
+  pgpool2-exporter:1.2.2-wolfi-clean-amd64 \
+  pgpool2-exporter.tar \
   --arch amd64
 ```
 
